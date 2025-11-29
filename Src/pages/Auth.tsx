@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Briefcase, ArrowLeft } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hook/use-toast";
+import { registerUser, authenticateUser, getUserByEmail, setUserProfile } from "@/lib/applicationStore";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -20,8 +21,28 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // For demo: existing default accounts
+  const ensureDemoAccounts = () => {
+    try {
+      if (!getUserByEmail("candidate@example.com")) {
+        const u = registerUser("candidate@example.com", "candidate123", "candidate", "Candidate Demo");
+        setUserProfile({ id: u.id, name: "Candidate Demo", email: u.email, title: "Frontend Engineer", location: "Bangalore, INDIA", skills: [] });
+      }
+      if (!getUserByEmail("admin@example.com")) {
+        const u = registerUser("admin@example.com", "admin123", "recruiter", "Admin Demo");
+        setUserProfile({ id: u.id, name: "Admin Demo", email: u.email, title: "Recruiter", location: "Remote", skills: [] });
+      }
+    } catch (err) {
+      // ignore
+    }
+  };
+
   const handleAuth = async (mode: "signin" | "signup") => {
-    if (!email || !password) {
+    // Trim whitespace from inputs
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       toast({
         title: "Missing Information",
         description: "Please enter both email and password",
@@ -30,16 +51,76 @@ const Auth = () => {
       return;
     }
 
-    setLoading(true);
-    // TODO: Implement actual authentication
-    setTimeout(() => {
-      setLoading(false);
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
       toast({
-        title: "Success!",
-        description: mode === "signin" ? "Signed in successfully" : "Account created successfully",
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
       });
-      navigate(defaultRole === "recruiter" ? "/recruiter" : "/candidate");
-    }, 1000);
+      return;
+    }
+
+    if (trimmedPassword.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+      // Ensure demo accounts exist for quick login
+      ensureDemoAccounts();
+
+      if (mode === "signin") {
+        const user = authenticateUser(trimmedEmail, trimmedPassword);
+        if (!user) {
+          setTimeout(() => {
+            setLoading(false);
+            toast({
+              title: "Login Failed",
+              description: "Invalid email or password",
+              variant: "destructive",
+            });
+          }, 500);
+          return;
+        }
+
+        // Success - navigate immediately
+        toast({
+          title: "Success!",
+          description: `Welcome back! Signed in as ${user.role}`,
+        });
+        setLoading(false);
+        setTimeout(() => {
+          navigate(user.role === "recruiter" ? "/recruiter" : "/candidate");
+        }, 600);
+      } else {
+        // Sign up: try to register a new user
+        try {
+          const roleToUse = (defaultRole as "candidate" | "recruiter") || "candidate";
+          const newUser = registerUser(trimmedEmail, trimmedPassword, roleToUse);
+          // Create an empty profile for new user
+          setUserProfile({ id: newUser.id, name: newUser.name || "", email: newUser.email, title: "", location: "", skills: [] });
+          setTimeout(() => {
+            setLoading(false);
+            toast({
+              title: "Success!",
+              description: "Account created! Please sign in with your credentials",
+            });
+            setEmail("");
+            setPassword("");
+          }, 800);
+        } catch (err: any) {
+          setTimeout(() => {
+            setLoading(false);
+            toast({ title: "Account Error", description: err?.message || "Could not create account", variant: "destructive" });
+          }, 300);
+        }
+      }
   };
 
   return (
@@ -60,6 +141,11 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 rounded-lg bg-blue-50 p-3 border border-blue-200">
+              <p className="text-xs font-semibold text-blue-900 mb-2">Demo Credentials:</p>
+              <p className="text-xs text-blue-800"><strong>Candidate:</strong> candidate@example.com / candidate123</p>
+              <p className="text-xs text-blue-800"><strong>Admin:</strong> admin@example.com / admin123</p>
+            </div>
             <Tabs defaultValue={defaultMode} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>

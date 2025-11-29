@@ -167,7 +167,7 @@ const Index = () => {
       <footer className="border-t border-border bg-card py-12">
         <div className="container mx-auto px-4 text-center">
           <p className="text-muted-foreground">
-            © 2025 TalentMatch AI. Built with Lovable Cloud.
+            © 2025 TalentMatch AI.
           </p>
         </div>
       </footer>
