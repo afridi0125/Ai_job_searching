@@ -1,3 +1,4 @@
+# Ai_job_searching
 # TalentMatch AI - AI-Powered Job Platform
 
 A modern, intelligent recruitment platform connecting talented candidates with their dream opportunities using AI-powered matching, resume parsing, quizzes, portfolio showcase, interview scheduling, and intelligent chat assistant.
